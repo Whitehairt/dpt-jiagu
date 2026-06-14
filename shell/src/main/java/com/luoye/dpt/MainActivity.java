@@ -15,7 +15,7 @@ public class MainActivity extends Activity {
         //In most cases, as follow code don't be run.
         TextView showTextView = findViewById(R.id.show_text);
         StringBuilder showText = new StringBuilder();
-        showText.append("dpt-shell seem not working.\n");
+        showText.append("Error");
         showText.append("Application: ");
         showText.append(getApplication().getClass().getName());
         showTextView.setText(showText);
