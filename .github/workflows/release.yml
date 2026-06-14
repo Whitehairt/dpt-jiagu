@@ -33,10 +33,6 @@ jobs:
       run: chmod +x gradlew
     - name: Build dpt.jar and shell-release
       run: ./gradlew :dpt:assemble :shell:assembleRelease
-    - name: Copy dpt.jar to executable
-      run: |
-        mkdir -p executable
-        cp dpt/build/libs/dpt.jar executable/
     - name: Get latest tag name
       id: get_latest_tag_name
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
@@ -53,7 +49,7 @@ jobs:
           if [ -f "$so_file" ]; then
             mkdir -p "executable/shell-files/libs/$target_arch"
             cp "$so_file" "executable/shell-files/libs/$target_arch/libjiagu.so"
-            echo "Copied $so_file to executable/shell-files/libs/$target_arch/"
+            echo "Copied $so_file"
           else
             echo "Warning: libjiagu.so for $abi not found"
           fi
