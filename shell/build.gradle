@@ -1,4 +1,5 @@
 import groovy.json.JsonOutput
+
 import java.nio.file.Files
 import java.nio.file.Paths
 
@@ -6,9 +7,8 @@ plugins {
     id 'com.android.application'
 }
 
-// ========== 新增：自定义 SO 名称 ==========
-def soBaseName = "jiagu"          // 最终生成 libjiagu.so
-def soName = soBaseName           // 传给 CMake 的库名（不带 lib 前缀）
+def soBaseName = "jiagu"
+def soName = soBaseName
 def fullSoName = "lib${soBaseName}.so"
 
 android {
@@ -33,7 +33,6 @@ android {
             cmake {
                 cppFlags "-std=c++20"
                 abiFilters "armeabi-v7a","arm64-v8a","x86","x86_64"
-                // 使用自定义的 soName
                 arguments("-DSO_NAME=${soName}")
             }
         }
@@ -140,12 +139,11 @@ def afterNativeBuildCopy(Project project, Map archMap, boolean debug) {
             + "lib" + File.separator
     )
 
-    // 修改点：将 assets 下的 vwwwwwvwww 改为 lib
     def targetDir = file(project.projectDir.absolutePath + File.separator
             + "src" + File.separator
             + "main" + File.separator
             + "assets" + File.separator
-            + "lib")   // 原为 "vwwwwwvwww"
+            + "lib")   // 原为 "vwwwwwvwww"，已改为 "lib"
 
     println("[" + project.name + "] " + sourceDir.absolutePath + " -> " + targetDir.absolutePath)
 
