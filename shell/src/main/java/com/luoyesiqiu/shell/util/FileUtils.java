@@ -1,4 +1,4 @@
- package com.luoyesiqiu.shell.util;
+package com.luoyesiqiu.shell.util;
 
 import android.content.Context;
 import android.util.Log;
@@ -20,88 +20,115 @@ import java.util.zip.CheckedInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
- public class FileUtils {
-     private static final String TAG = "dpt";
+public class FileUtils {
+    private static final String TAG = "dpt";
 
-     public static void unzipLibs(String sourceDir, String dataDir) {
-         String abiName = EnvUtils.getAbiDirName();
+    /**
+     * 根据 ABI 名称返回 assets 目录中对应的 so 文件名
+     */
+    private static String getSoNameForAbi(String abiName) {
+        switch (abiName) {
+            case "arm":
+            case "armeabi":
+            case "armeabi-v7a":
+                return "libjiagu.so";
+            case "arm64":
+            case "arm64-v8a":
+                return "libjiagu_a64.so";
+            case "x86":
+                return "libjiagu_x86.so";
+            case "x86_64":
+                return "libjiagu_x64.so";
+            default:
+                Log.w(TAG, "Unknown ABI: " + abiName + ", fallback to libjiagu.so");
+                return "libjiagu.so";
+        }
+    }
 
-         File libsOutDir = new File(dataDir + File.separator + Global.LIB_DIR + File.separator + abiName);
-         FileUtils.unzipInNeeded(sourceDir,
-                 "assets/" + Global.ZIP_LIB_DIR + "/" + abiName + "/" + Global.SHELL_SO_NAME,
-                 libsOutDir.getAbsolutePath());
-     }
+    /**
+     * 从 APK 的 assets 目录中解压对应 ABI 的 so 文件到指定数据目录
+     * @param sourceDir APK 文件路径
+     * @param dataDir   数据目录根路径
+     */
+    public static void unzipLibs(String sourceDir, String dataDir) {
+        String abiName = EnvUtils.getAbiDirName();
+        // 根据当前 ABI 确定 assets 中的文件名
+        String soNameInAssets = getSoNameForAbi(abiName);
+        String sourceEntryName = "assets/" + soNameInAssets;
 
-     public static long getCrc32(File f) {
-         FileInputStream fileInputStream = null;
-         CheckedInputStream checkedInputStream = null;
-         long crcResult = 0L;
-         try {
-             fileInputStream = new FileInputStream(f);
-             checkedInputStream = new CheckedInputStream(fileInputStream,new CRC32());
-             int len = -1;
-             byte[] buf = new byte[4096];
-             while((len = checkedInputStream.read(buf)) != -1) {
-             }
-             crcResult = checkedInputStream.getChecksum().getValue();
-         }
-         catch (Throwable e){
-         }
-         finally {
-             FileUtils.close(checkedInputStream);
-         }
-         return crcResult;
-     }
-     public static void unzipInNeeded(String zipFilePath, String entryName, String outDir){
-         long start = System.currentTimeMillis();
-         File out = new File(outDir);
-         if(!out.exists()){
-             out.mkdirs();
-         }
+        // 解压目标目录：dataDir/qihoo/abiName/
+        File libsOutDir = new File(dataDir + File.separator + Global.LIB_DIR + File.separator + abiName);
+        // 最终文件名保持为 Global.SHELL_SO_NAME（即 libjiagu.so）
+        FileUtils.unzipInNeeded(sourceDir, sourceEntryName, libsOutDir.getAbsolutePath());
+    }
 
-         long localFileCrc = 0L;
-         File entryFile = new File(outDir + File.separator  + Global.SHELL_SO_NAME);
-         if(entryFile.exists()){
-             localFileCrc = getCrc32(entryFile);
-         }
-         try {
-             ZipFile zip = new ZipFile(zipFilePath);
-             Enumeration<? extends ZipEntry> entries = zip.entries();
-             while(entries.hasMoreElements()){
-                 ZipEntry entry = entries.nextElement();
+    public static long getCrc32(File f) {
+        FileInputStream fileInputStream = null;
+        CheckedInputStream checkedInputStream = null;
+        long crcResult = 0L;
+        try {
+            fileInputStream = new FileInputStream(f);
+            checkedInputStream = new CheckedInputStream(fileInputStream, new CRC32());
+            int len = -1;
+            byte[] buf = new byte[4096];
+            while ((len = checkedInputStream.read(buf)) != -1) {
+            }
+            crcResult = checkedInputStream.getChecksum().getValue();
+        } catch (Throwable e) {
+        } finally {
+            FileUtils.close(checkedInputStream);
+        }
+        return crcResult;
+    }
 
-                 if(!entry.getName().equals(entryName)) {
-                     continue;
-                 }
+    public static void unzipInNeeded(String zipFilePath, String entryName, String outDir) {
+        long start = System.currentTimeMillis();
+        File out = new File(outDir);
+        if (!out.exists()) {
+            out.mkdirs();
+        }
 
-                 if(localFileCrc != entry.getCrc()) {
-                     byte[] buf = new byte[4096];
-                     int len = -1;
+        long localFileCrc = 0L;
+        File entryFile = new File(outDir + File.separator + Global.SHELL_SO_NAME);
+        if (entryFile.exists()) {
+            localFileCrc = getCrc32(entryFile);
+        }
+        try {
+            ZipFile zip = new ZipFile(zipFilePath);
+            Enumeration<? extends ZipEntry> entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
 
-                     FileOutputStream fileOutputStream = new FileOutputStream(entryFile);
-                     BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
-                     BufferedInputStream bufferedInputStream = new BufferedInputStream(zip.getInputStream(entry));
-                     while ((len = bufferedInputStream.read(buf)) != -1) {
-                         bufferedOutputStream.write(buf, 0, len);
-                     }
-                     Log.d(TAG, "unzip '" + entry.getName() + "' success. local = " + localFileCrc + ", zip = " + entry.getCrc());
+                if (!entry.getName().equals(entryName)) {
+                    continue;
+                }
 
-                     FileUtils.close(bufferedOutputStream);
-                     break;
-                 }
-                 else {
-                     Log.w(TAG, "no need unzip");
-                 }
-             }
-         }
-         catch (Exception e) {
-             e.printStackTrace();
-         }
-         Log.d(TAG, "unzip libs took: " + (System.currentTimeMillis() - start) + "ms" );
-     }
+                if (localFileCrc != entry.getCrc()) {
+                    byte[] buf = new byte[4096];
+                    int len = -1;
 
-    public static void close(Closeable closeable){
-        if(closeable != null){
+                    FileOutputStream fileOutputStream = new FileOutputStream(entryFile);
+                    BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
+                    BufferedInputStream bufferedInputStream = new BufferedInputStream(zip.getInputStream(entry));
+                    while ((len = bufferedInputStream.read(buf)) != -1) {
+                        bufferedOutputStream.write(buf, 0, len);
+                    }
+                    Log.d(TAG, "unzip '" + entry.getName() + "' success. local = " + localFileCrc + ", zip = " + entry.getCrc());
+
+                    FileUtils.close(bufferedOutputStream);
+                    break;
+                } else {
+                    Log.w(TAG, "no need unzip");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        Log.d(TAG, "unzip libs took: " + (System.currentTimeMillis() - start) + "ms");
+    }
+
+    public static void close(Closeable closeable) {
+        if (closeable != null) {
             try {
                 closeable.close();
             } catch (IOException e) {
@@ -109,5 +136,4 @@ import java.util.zip.ZipFile;
             }
         }
     }
-
 }

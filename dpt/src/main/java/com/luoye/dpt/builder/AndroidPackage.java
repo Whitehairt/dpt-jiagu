@@ -454,78 +454,94 @@ public String getProxyComponentFactory() {
         }
     }
 
-    public void copyNativeLibs(String packageDir) {
-        File sourceDirRoot = new File(FileUtils.getExecutablePath(), "shell-files" + File.separator + "libs");
-        File destDirRoot = new File(getOutAssetsDir(packageDir).getAbsolutePath(), Const.KEY_LIBS_DIR_NAME);
+    /**
+ * 复制 Native 库到 assets 根目录，根据 ABI 重命名
+ * 源目录：shell-files/libs/{arm, arm64, x86, x86_64}/libjiagu.so
+ * 目标：assets/libjiagu.so (arm32), assets/libjiagu_a64.so (arm64),
+ *       assets/libjiagu_x86.so (x86), assets/libjiagu_x64.so (x86_64)
+ * 根据 excludedAbi 跳过不需要的架构
+ */
+public void copyNativeLibs(String packageDir) {
+    File sourceDirRoot = new File(FileUtils.getExecutablePath(), "shell-files" + File.separator + "libs");
+    File destDir = getOutAssetsDir(packageDir); // 直接放到 assets 根目录
 
-        if (!destDirRoot.exists()) {
-            destDirRoot.mkdirs();
-        }
-
-        File[] abiDirs = sourceDirRoot.listFiles();
-        if (abiDirs == null) {
-            return;
-        }
-
-        for (File abiDir : abiDirs) {
-            if (!abiDir.isDirectory()) {
-                continue;
-            }
-
-            String abiName = abiDir.getName();
-
-            if (excludedAbi != null && excludedAbi.contains(abiName)) {
-                LogUtils.info("Skipping excluded ABI: " + abiName);
-                continue;
-            }
-
-            File destAbiDir = new File(destDirRoot, abiName);
-            if (!destAbiDir.exists()) {
-                destAbiDir.mkdirs();
-            }
-
-            File[] libFiles = abiDir.listFiles();
-            if (libFiles == null) {
-                continue;
-            }
-
-            for (File libFile : libFiles) {
-                if (libFile.isFile() && libFile.getName().endsWith(".so")) {
-                    File destFile = new File(destAbiDir, libFile.getName());
-                    try {
-                        Files.copy(libFile.toPath(), destFile.toPath(),
-                                StandardCopyOption.REPLACE_EXISTING);
-                    } catch (IOException e) {
-                        LogUtils.error("Failed to copy library: " + e.getMessage());
-                    }
-                }
-            }
-        }
+    if (!destDir.exists()) {
+        destDir.mkdirs();
     }
 
-    public void encryptSoFiles(String packageOutDir, byte[] rc4Key){
-        File obfDir = new File(getOutAssetsDir(packageOutDir).getAbsolutePath() + File.separator, Const.KEY_LIBS_DIR_NAME);
-        File[] soAbiDirs = obfDir.listFiles();
-        if(soAbiDirs == null) {
-            return;
+    // 源 ABI 子目录名 -> 目标文件名
+    Map<String, String> abiToTarget = new HashMap<>();
+    abiToTarget.put("arm", "libjiagu.so");
+    abiToTarget.put("armeabi", "libjiagu.so");
+    abiToTarget.put("armeabi-v7a", "libjiagu.so");
+    abiToTarget.put("arm64", "libjiagu_a64.so");
+    abiToTarget.put("arm64-v8a", "libjiagu_a64.so");
+    abiToTarget.put("x86", "libjiagu_x86.so");
+    abiToTarget.put("x86_64", "libjiagu_x64.so");
+
+    File[] abiDirs = sourceDirRoot.listFiles();
+    if (abiDirs == null) return;
+
+    for (File abiDir : abiDirs) {
+        if (!abiDir.isDirectory()) continue;
+        String abiName = abiDir.getName();
+
+        // 跳过用户排除的 ABI
+        if (excludedAbi != null && excludedAbi.contains(abiName)) {
+            LogUtils.info("Skipping excluded ABI: " + abiName);
+            continue;
         }
 
-        for (File soAbiDir : soAbiDirs) {
-            File[] soFiles = soAbiDir.listFiles();
-            if(soFiles == null) {
-                continue;
-            }
-
-            for (File soFile : soFiles) {
-                if(!soFile.getAbsolutePath().endsWith(".so")) {
-                    continue;
-                }
-                encryptSoFile(soFile, rc4Key);
-                writeSoFileCryptKey(soFile, rc4Key);
-            }
+        String targetName = abiToTarget.get(abiName);
+        if (targetName == null) {
+            LogUtils.warn("Unknown ABI: " + abiName + ", skipping");
+            continue;
         }
 
+        // 取该目录下第一个 .so 文件（通常就是 libjiagu.so）
+        File[] soFiles = abiDir.listFiles((dir, name) -> name.endsWith(".so"));
+        if (soFiles == null || soFiles.length == 0) {
+            LogUtils.warn("No .so file in " + abiDir.getAbsolutePath());
+            continue;
+        }
+        File srcSo = soFiles[0];
+        File dstSo = new File(destDir, targetName);
+        try {
+            Files.copy(srcSo.toPath(), dstSo.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            LogUtils.info("Copied " + srcSo.getName() + " -> " + dstSo.getAbsolutePath());
+        } catch (IOException e) {
+            LogUtils.error("Failed to copy library: " + e.getMessage());
+        }
     }
+}
+
+/**
+ * 加密 assets 根目录下指定的四个 so 文件
+ * 如果文件不存在则跳过，不崩溃
+ */
+public void encryptSoFiles(String packageOutDir, byte[] rc4Key) {
+    File assetsDir = getOutAssetsDir(packageOutDir);
+    if (!assetsDir.exists()) return;
+
+    // 只加密这四个固定的 so 文件
+    String[] targetSoNames = {
+        "libjiagu.so",
+        "libjiagu_a64.so",
+        "libjiagu_x86.so",
+        "libjiagu_x64.so"
+    };
+
+    for (String soName : targetSoNames) {
+        File soFile = new File(assetsDir, soName);
+        if (!soFile.exists()) {
+            LogUtils.info("Skip encryption, file not found: " + soFile.getAbsolutePath());
+            continue;
+        }
+        // 加密方法内部逻辑完全不变
+        encryptSoFile(soFile, rc4Key);
+        writeSoFileCryptKey(soFile, rc4Key);
+    }
+}
 
     private void encryptSoFile(File soFile, byte[] rc4Key) {
         try {
