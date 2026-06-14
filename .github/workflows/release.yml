@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -26,23 +25,18 @@ jobs:
     - name: Install ninja
       run: sudo apt-get update && sudo apt-get install ninja-build
     - name: Setup CMake
-      uses: actions/setup-cmake@v2
+      uses: jwlawson/actions-setup-cmake@v1
       with:
-        cmake-version: '3.31.1'
+       cmake-version: '3.31.1'
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Building project
       run: ./gradlew build
     - name: Get latest tag name
       id: get_latest_tag_name
-      run: |
-        if [[ "${{ github.ref_type }}" == "tag" ]]; then
-          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-        else
-          echo "VERSION=manual" >> $GITHUB_OUTPUT
-        fi
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
     - name: Compress files
-      run: zip -r -q dpt-shell-${{ steps.get_latest_tag_name.outputs.VERSION }}.zip executable/
+      run:  zip -r -q dpt-shell-${{ steps.get_latest_tag_name.outputs.VERSION }}.zip executable/
     - uses: "marvinpinto/action-automatic-releases@latest"
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
