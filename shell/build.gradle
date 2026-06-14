@@ -198,7 +198,8 @@ afterEvaluate { Project project ->
     def debug = false
     if(firstTaskName == "shell:assemble" || firstTaskName == "assemble" ||
        firstTaskName == "shell:build" || firstTaskName == "build") {
-        buildTask = assembleTask
+        // 修改点1：强制使用 assembleReleaseTask，确保只复制 release 版
+        buildTask = assembleReleaseTask
         nativeBuildTask = nativeReleaseBuildTask
         debug = false
     }
@@ -223,7 +224,7 @@ afterEvaluate { Project project ->
 
 }
 
-// ========== 新增的 fallback 强制复制任务（优先 release，忽略 debug）==========
+// ========== 新增的 fallback 强制复制任务 ==========
 task forceCopyLibs {
     doLast {
         def targetBase = file(project.rootDir.absolutePath + "/executable/shell-files/libs")
@@ -234,7 +235,8 @@ task forceCopyLibs {
         }
 
         println "forceCopyLibs: scanning for libjiagu.so (preferring release builds)..."
-        def allSoFiles = fileTree(dir: project.buildDir, include: "**/libjiagu.so")
+        // 修改点2：只搜索 release 路径下的 so
+        def allSoFiles = fileTree(dir: project.buildDir, include: "**/release/**/libjiagu.so")
         def releaseSos = []
         def debugSos = []
         allSoFiles.each { soFile ->
