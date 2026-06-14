@@ -155,7 +155,36 @@ public class DexUtils {
         DexFile dexFile = dexMethodRewriter.getDexFileRewriter().rewrite(dexBackedDexFile);
         DexFileFactory.writeDexFile(newDexFilePath.getAbsolutePath(), dexFile);
     }
-
+/**
+ * 精确重命名：StubApp -> com.stub，其他壳类 -> com.qihoo/util
+ */
+public static void renamePackageWithWhitelist(File dexFilePath, File newDexFilePath,
+                                               String defaultTargetPackage,
+                                               String specialClassSimpleName,
+                                               String specialTargetPackage) throws IOException {
+    DexBackedDexFile dexFile = DexFileFactory.loadDexFile(dexFilePath, Opcodes.getDefault());
+    DexRewriter rewriter = new DexRewriter(new RewriterModule() {
+        @Override
+        public Rewriter<String> getTypeRewriter(Rewriters rewriters) {
+            return new TypeRewriter() {
+                @Override
+                public String rewrite(String value) {
+                    // 只处理壳类（以 com.luoye 或 com.luoyesiqiu 开头，你可根据实际情况调整）
+                    if (!value.startsWith("Lcom/luoye") && !value.startsWith("Lcom/luoyesiqiu")) {
+                        return value;
+                    }
+                    int lastSlash = value.lastIndexOf('/');
+                    int end = value.length() - 1;
+                    String className = value.substring(lastSlash + 1, end);
+                    String newPackage = className.equals(specialClassSimpleName) ? specialTargetPackage : defaultTargetPackage;
+                    return String.format("L%s/%s;", newPackage, className);
+                }
+            };
+        }
+    });
+    DexFile newDexFile = rewriter.getDexFileRewriter().rewrite(dexFile);
+    DexFileFactory.writeDexFile(newDexFilePath.getAbsolutePath(), newDexFile);
+}
     private static int getCodeOffAppearCount(int dexIndex, int codeOff) {
         try {
             Integer appearCount = codeOffAppearMap.get(dexIndex + "_" + codeOff);

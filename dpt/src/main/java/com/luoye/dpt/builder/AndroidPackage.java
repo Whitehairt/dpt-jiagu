@@ -25,12 +25,6 @@ import com.luoye.dpt.util.ZipUtils;
 import net.lingala.zip4j.model.enums.CompressionMethod;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.jf.dexlib2.DexFileFactory;
-import org.jf.dexlib2.Opcodes;
-import org.jf.dexlib2.dexbacked.DexBackedDexFile;
-import org.jf.dexlib2.iface.*;
-import org.jf.dexlib2.immutable.*;
-import org.jf.dexlib2.writer.DexFileWriter;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -276,84 +270,52 @@ public abstract class AndroidPackage {
     /**
      * Combine the compressed dex file with the shell dex to create a new dex file.
      */
-    private void fixDexPackage(File input, File output) throws IOException {
-    try (DexBackedDexFile dex = DexFileFactory.loadDexFile(input, 19)) {
-        Map<String, String> map = new HashMap<>();
-        for (ClassDef cls : dex.getClasses()) {
-            String name = cls.getType();
-            String simple = name.substring(name.lastIndexOf('/') + 1, name.length() - 1);
-            String newName = simple.equals("StubApp") ? "Lcom/stub/StubApp;" : "Lcom/qihoo/util/" + simple + ";";
-            map.put(name, newName);
-        }
-        List<ClassDef> newClasses = new ArrayList<>();
-        for (ClassDef cls : dex.getClasses()) {
-            newClasses.add(rewriteOneClass(cls, map));
-        }
-        try (DexFileWriter w = new DexFileWriter(dex.getOpcodes())) {
-            for (ClassDef c : new ImmutableDexFile(newClasses, dex.getOpcodes()).getClasses()) {
-                w.internAndWriteClass(c);
-            }
-            w.writeTo(output);
-        }
-    }
-}
-
-private ClassDef rewriteOneClass(ClassDef orig, Map<String, String> map) {
-    String newType = map.getOrDefault(orig.getType(), orig.getType());
-    ImmutableClassDef.Builder b = new ImmutableClassDef.Builder(newType, orig.getAccessFlags(),
-        rewriteType(orig.getSuperclass(), map), rewriteTypes(orig.getInterfaces(), map), orig.getSourceFile());
-    for (Field f : orig.getFields()) b.addField(new ImmutableFieldDefinition(newType, f.getAccessFlags(),
-        rewriteType(f.getType(), map), f.getName(), f.getInitialValue()));
-    for (Method m : orig.getMethods()) b.addMethod(new ImmutableMethod(newType, m.getAccessFlags(),
-        rewriteType(m.getReturnType(), map), m.getName(), rewriteTypes(m.getParameters(), map),
-        m.getParameterNames(), m.getImplementation()));  // 方法体保留原样，因为类型引用会在写出时自动更新？为了安全，但你的壳方法简单，可以不管
-    return b.build();
-}
-
-private String rewriteType(String t, Map<String, String> map) {
-    if (t == null) return null;
-    if (t.startsWith("[")) return "[" + rewriteType(t.substring(1), map);
-    if (t.length() == 1) return t;
-    return map.getOrDefault(t, t);
-}
-
-private List<String> rewriteTypes(List<String> ts, Map<String, String> map) {
-    List<String> out = new ArrayList<>();
-    for (String t : ts) out.add(rewriteType(t, map));
-    return out;
-}
-
     protected void combineDexZipWithShellDex(String packageMainProcessPath) {
     try {
         File shellDexFile = new File(getProxyDexPath());
-        File modifiedDexFile = new File(getRenameDexPath());
+        File renameDexFile = new File(getRenameDexPath());
 
-        // 用 dexlib2 重写：StubApp → com.stub，其他 → com.qihoo/util
-        fixDexPackage(shellDexFile, modifiedDexFile);
+        // 无条件执行精确重命名：StubApp -> com.stub，其他壳类 -> com.qihoo/util
+        DexUtils.renamePackageWithWhitelist(shellDexFile, renameDexFile,
+                "com/qihoo/util", "StubApp", "com/stub");
 
-        byte[] unShellDexArray = com.android.dex.util.FileUtils.readFile(modifiedDexFile);
+        // 始终使用重命名后的 DEX
+        byte[] unShellDexArray = com.android.dex.util.FileUtils.readFile(renameDexFile);
+
         File originalDexZipFile = new File(getOutAssetsDir(packageMainProcessPath).getAbsolutePath() + File.separator + Const.KEY_DEXES_STORE_NAME);
         byte[] zipData = com.android.dex.util.FileUtils.readFile(originalDexZipFile);
         int zipDataLen = zipData.length;
         int unShellDexLen = unShellDexArray.length;
+        LogUtils.info("Dexes zip file size: %s", zipDataLen);
+        LogUtils.info("Proxy dex file size: %s", unShellDexLen);
         int totalLen = zipDataLen + unShellDexLen + 4;
         byte[] newDexBytes = new byte[totalLen];
+
         System.arraycopy(unShellDexArray, 0, newDexBytes, 0, unShellDexLen);
         System.arraycopy(zipData, 0, newDexBytes, unShellDexLen, zipDataLen);
         System.arraycopy(FileUtils.intToByte(zipDataLen), 0, newDexBytes, totalLen - 4, 4);
+
         FileUtils.fixFileSizeHeader(newDexBytes);
         FileUtils.fixSHA1Header(newDexBytes);
         FileUtils.fixCheckSumHeader(newDexBytes);
+
         String targetDexFile = getDexDir(packageMainProcessPath) + File.separator + "classes.dex";
         File file = new File(targetDexFile);
-        if (!file.exists()) file.createNewFile();
+        if (!file.exists()) {
+            file.createNewFile();
+        }
+
         try (FileOutputStream fos = new FileOutputStream(targetDexFile)) {
             fos.write(newDexBytes);
+            fos.flush();
         }
+        LogUtils.info("New Dex file generated: " + targetDexFile);
+
         FileUtils.deleteRecurse(originalDexZipFile);
-        FileUtils.deleteRecurse(modifiedDexFile);
+        FileUtils.deleteRecurse(renameDexFile);
     } catch (Exception e) {
-        throw new RuntimeException("DEX combine failed", e);
+        e.printStackTrace();
+        throw new RuntimeException("combineDexZipWithShellDex failed", e);
     }
 }
 
@@ -415,9 +377,9 @@ private List<String> rewriteTypes(List<String> ts, Map<String, String> map) {
     return "com.stub.StubApp";
 }
 
-    public String getProxyComponentFactory() {
-        return String.format(Locale.US, "%s.%s", ShellConfig.getInstance().getShellPackageName(), "qihooutil");
-    }
+public String getProxyComponentFactory() {
+    return "com.qihoo.util.qihooutil";
+}
 
     protected String getProxyDexPath() {
         return FileUtils.getExecutablePath() + File.separator + "shell-files" + File.separator + "dex" + File.separator + "classes.dex";
