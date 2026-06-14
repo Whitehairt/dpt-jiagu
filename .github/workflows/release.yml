@@ -31,14 +31,17 @@ jobs:
        cmake-version: '3.31.1'
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-    - name: Building project
-      run: ./gradlew assembleRelease   # 强制只构建 release
+    - name: Build dpt.jar and shell-release
+      run: ./gradlew :dpt:assemble :shell:assembleRelease
+    - name: Copy dpt.jar to executable
+      run: |
+        mkdir -p executable
+        cp dpt/build/libs/dpt.jar executable/
     - name: Get latest tag name
       id: get_latest_tag_name
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-    - name: Force copy libs (only release, no duplicates)
+    - name: Force copy libs (only release stripped)
       run: |
-        # 只从 release 的 stripped_native_libs 中复制 so（已 strip，最终产物）
         for abi in armeabi-v7a arm64-v8a x86 x86_64; do
           case $abi in
             armeabi-v7a) target_arch="arm" ;;
@@ -55,7 +58,6 @@ jobs:
             echo "Warning: libjiagu.so for $abi not found"
           fi
         done
-        # 确保目录存在（即使没有 so 也创建，避免 zip 缺目录）
         mkdir -p executable/shell-files/libs
     - name: Compress files
       run:  zip -r -q dpt-shell-${{ steps.get_latest_tag_name.outputs.VERSION }}.zip executable/
