@@ -1020,35 +1020,42 @@ public String getProxyComponentFactory() {
     }
 
     public void protect() throws IOException {
-        String path = "shell-files";
-        File shellFiles = new File(FileUtils.getExecutablePath() + File.separator + path);
-        if(!shellFiles.exists()) {
-            String msg = "Cannot find directory: shell-files!" + shellFiles;
-            LogUtils.error(msg);
-            throw new FileNotFoundException(msg);
-        }
-
-        File willProtectFile = new File(getFilePath());
-
-        if(!willProtectFile.exists()){
-            String msg = String.format(Locale.US, "File not exists: %s", getFilePath());
-            throw new FileNotFoundException(msg);
-        }
-
-        processRuleFile();
-        processProtectConfigFile();
-
-        if (isVerifySign()) {
-            String sha256 = computeSignatureSha256();
-            if (sha256 != null) {
-                ShellConfig.getInstance().setAppSignSha256(sha256);
-                LogUtils.info("Signature verification enabled, SHA-256: " + sha256);
-            } else {
-                LogUtils.error("Failed to compute certificate SHA-256, signature verification disabled.");
-            }
-        }
-
-        JunkCodeGenerator.generateJunkCodeDex(new File(getJunkCodeDexPath()));
+    String path = "shell-files";
+    File shellFiles = new File(FileUtils.getExecutablePath() + File.separator + path);
+    if(!shellFiles.exists()) {
+        String msg = "Cannot find directory: shell-files!" + shellFiles;
+        LogUtils.error(msg);
+        throw new FileNotFoundException(msg);
     }
+
+    File willProtectFile = new File(getFilePath());
+
+    if(!willProtectFile.exists()){
+        String msg = String.format(Locale.US, "File not exists: %s", getFilePath());
+        throw new FileNotFoundException(msg);
+    }
+
+    processRuleFile();
+    processProtectConfigFile();
+
+    if (isVerifySign()) {
+        String sha256 = computeSignatureSha256();
+        if (sha256 != null) {
+            ShellConfig.getInstance().setAppSignSha256(sha256);
+            LogUtils.info("Signature verification enabled, SHA-256: " + sha256);
+        } else {
+            LogUtils.error("Failed to compute certificate SHA-256, signature verification disabled.");
+        }
+    }
+
+    ShellConfig config = ShellConfig.getInstance();
+    config.setJniClsName("com.qihoo.util.JniBridge");
+    config.setApplicationName("com.stub.StubApp");
+    config.setAppComponentFactoryName("com.qihoo.util.qihooutil");
+    config.setShellPackageName("com.qihoo.util");
+    LogUtils.info("Updated ShellConfig for renamed packages");
+
+    JunkCodeGenerator.generateJunkCodeDex(new File(getJunkCodeDexPath()));
+}
 
 }
