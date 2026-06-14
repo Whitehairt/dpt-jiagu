@@ -223,22 +223,37 @@ afterEvaluate { Project project ->
 
 }
 
-// ========== 新增的 fallback 强制复制任务 ==========
+// ========== 新增的 fallback 强制复制任务（优先 release，忽略 debug）==========
 task forceCopyLibs {
     doLast {
         def targetBase = file(project.rootDir.absolutePath + "/executable/shell-files/libs")
-        // 如果原有复制已经产生了 libs 且有文件，则跳过
-        if (targetBase.exists() && fileTree(targetBase).files.size() > 0) {
-            println "forceCopyLibs: libs already exist, skip"
-            return
+        // 确保使用最新最优的 so，先删除已有目录
+        if (targetBase.exists()) {
+            delete targetBase
+            println "forceCopyLibs: deleted existing libs directory"
         }
-        println "forceCopyLibs: libs missing, fallback to scan build dir"
-        def soFiles = fileTree(dir: project.buildDir, include: "**/libjiagu.so")
-        if (soFiles.empty) {
+
+        println "forceCopyLibs: scanning for libjiagu.so (preferring release builds)..."
+        def allSoFiles = fileTree(dir: project.buildDir, include: "**/libjiagu.so")
+        def releaseSos = []
+        def debugSos = []
+        allSoFiles.each { soFile ->
+            def path = soFile.absolutePath
+            if (path.contains("/release/")) {
+                releaseSos << soFile
+            } else if (path.contains("/debug/")) {
+                debugSos << soFile
+            }
+        }
+
+        def sosToUse = releaseSos.isEmpty() ? debugSos : releaseSos
+        if (sosToUse.isEmpty()) {
             println "forceCopyLibs: No libjiagu.so found in build dir!"
             return
         }
-        soFiles.each { soFile ->
+
+        println "forceCopyLibs: using ${sosToUse.size()} libjiagu.so (${releaseSos.isEmpty() ? 'debug' : 'release'} variant)"
+        sosToUse.each { soFile ->
             def path = soFile.absolutePath
             def arch = null
             if (path.contains("/armeabi-v7a/")) arch = "arm"
