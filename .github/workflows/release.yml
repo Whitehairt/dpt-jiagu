@@ -17,49 +17,70 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
-    - name: set up JDK
+
+    - name: set up JDK 17
       uses: actions/setup-java@v3
       with:
         java-version: '17'
         distribution: 'temurin'
         cache: gradle
+
     - name: Install ninja
       run: sudo apt-get update && sudo apt-get install ninja-build
-    - name: Setup CMake
+
+    - name: Setup CMake 3.31.1
       uses: jwlawson/actions-setup-cmake@v1
       with:
-       cmake-version: '3.31.1'
-    - name: Grant execute permission for gradlew
+        cmake-version: '3.31.1'
+
+    - name: Grant execute permission
       run: chmod +x gradlew
-    - name: Build dpt.jar and shell-release
+
+    - name: Build release (dpt.jar + shell)
       run: ./gradlew :dpt:assemble :shell:assembleRelease
-    - name: Get latest tag name
-      id: get_latest_tag_name
-      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-    - name: Force copy libs (only release stripped)
+
+    - name: Prepare shell-files (dex and libs)
       run: |
-        for abi in armeabi-v7a arm64-v8a x86 x86_64; do
-          case $abi in
-            armeabi-v7a) target_arch="arm" ;;
-            arm64-v8a)   target_arch="arm64" ;;
-            x86)         target_arch="x86" ;;
-            x86_64)      target_arch="x86_64" ;;
+        rm -rf executable/shell-files
+        mkdir -p executable/shell-files/dex
+        mkdir -p executable/shell-files/libs
+
+        # copy classes.dex (release)
+        DEX_PATH=$(find shell/build/intermediates/dex/release -name "classes.dex" | head -1)
+        if [ -z "$DEX_PATH" ]; then
+          echo "ERROR: classes.dex not found"
+          exit 1
+        fi
+        cp "$DEX_PATH" executable/shell-files/dex/classes.dex
+        echo "Copied dex: $DEX_PATH"
+
+        # copy libjiagu.so (release stripped)
+        for ABI in armeabi-v7a arm64-v8a x86 x86_64; do
+          case $ABI in
+            armeabi-v7a) DIR="arm" ;;
+            arm64-v8a)   DIR="arm64" ;;
+            x86)         DIR="x86" ;;
+            x86_64)      DIR="x86_64" ;;
           esac
-          so_file=$(find shell/build/intermediates/stripped_native_libs/release -name "libjiagu.so" -path "*/$abi/*" | head -n1)
-          if [ -f "$so_file" ]; then
-            mkdir -p "executable/shell-files/libs/$target_arch"
-            cp "$so_file" "executable/shell-files/libs/$target_arch/libjiagu.so"
-            echo "Copied $so_file"
+          SO_PATH=$(find shell/build/intermediates/stripped_native_libs/release -name "libjiagu.so" -path "*/$ABI/*" | head -1)
+          if [ -n "$SO_PATH" ]; then
+            mkdir -p "executable/shell-files/libs/$DIR"
+            cp "$SO_PATH" "executable/shell-files/libs/$DIR/libjiagu.so"
+            echo "Copied $ABI to $DIR"
           else
-            echo "Warning: libjiagu.so for $abi not found"
+            echo "Warning: libjiagu.so for $ABI not found"
           fi
         done
-        mkdir -p executable/shell-files/libs
-    - name: Compress files
-      run:  zip -r -q dpt-shell-${{ steps.get_latest_tag_name.outputs.VERSION }}.zip executable/
-    - uses: "marvinpinto/action-automatic-releases@latest"
+
+    - name: Get tag name
+      id: tag
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Compress
+      run: zip -r -q dpt-shell-${{ steps.tag.outputs.VERSION }}.zip executable/
+
+    - uses: marvinpinto/action-automatic-releases@latest
       with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
         prerelease: false
-        files: |
-          dpt-shell-${{ steps.get_latest_tag_name.outputs.VERSION }}.zip
+        files: dpt-shell-${{ steps.tag.outputs.VERSION }}.zip
