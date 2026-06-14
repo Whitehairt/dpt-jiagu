@@ -32,25 +32,30 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Building project
-      run: ./gradlew build   # 或 build，按你现在的
+      run: ./gradlew assembleRelease   # 强制只构建 release
     - name: Get latest tag name
       id: get_latest_tag_name
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-    - name: Force copy libs to executable/shell-files/libs
+    - name: Force copy libs (only release, no duplicates)
       run: |
-        find . -name "libjiagu.so" -type f | while read so; do
-          arch_dir=$(dirname "$so" | xargs basename)
-          case "$arch_dir" in
+        # 只从 release 的 stripped_native_libs 中复制 so（已 strip，最终产物）
+        for abi in armeabi-v7a arm64-v8a x86 x86_64; do
+          case $abi in
             armeabi-v7a) target_arch="arm" ;;
             arm64-v8a)   target_arch="arm64" ;;
             x86)         target_arch="x86" ;;
             x86_64)      target_arch="x86_64" ;;
-            *) continue ;;
           esac
-          mkdir -p "executable/shell-files/libs/$target_arch"
-          cp "$so" "executable/shell-files/libs/$target_arch/libjiagu.so"
-          echo "Copied $so to executable/shell-files/libs/$target_arch/"
+          so_file=$(find shell/build/intermediates/stripped_native_libs/release -name "libjiagu.so" -path "*/$abi/*" | head -n1)
+          if [ -f "$so_file" ]; then
+            mkdir -p "executable/shell-files/libs/$target_arch"
+            cp "$so_file" "executable/shell-files/libs/$target_arch/libjiagu.so"
+            echo "Copied $so_file to executable/shell-files/libs/$target_arch/"
+          else
+            echo "Warning: libjiagu.so for $abi not found"
+          fi
         done
+        # 确保目录存在（即使没有 so 也创建，避免 zip 缺目录）
         mkdir -p executable/shell-files/libs
     - name: Compress files
       run:  zip -r -q dpt-shell-${{ steps.get_latest_tag_name.outputs.VERSION }}.zip executable/
