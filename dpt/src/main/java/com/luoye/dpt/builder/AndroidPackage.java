@@ -271,65 +271,55 @@ public abstract class AndroidPackage {
      * Combine the compressed dex file with the shell dex to create a new dex file.
      */
     protected void combineDexZipWithShellDex(String packageMainProcessPath) {
-        try {
-            File shellDexFile = new File(getProxyDexPath());
-            File renameDexFile = new File(getRenameDexPath());
+    try {
+        File shellDexFile = new File(getProxyDexPath());
+        File renameDexFile = new File(getRenameDexPath());
 
-            ShellConfig shellConfig = ShellConfig.getInstance();
+        // 固定目标包名为 com/qihoo/util，始终执行重命名（防止漏网之鱼）
+        String targetSlashPackage = "com/qihoo/util";
+        boolean needRename = true;
 
-            boolean needRename = !org.apache.commons.lang3.StringUtils.isBlank(shellConfig.getShellPackageName())
-                    && !Const.DEFAULT_SHELL_PACKAGE_NAME.equals(shellConfig.getShellPackageName());
-
-            if(needRename) {
-                DexUtils.renamePackageName(shellDexFile, renameDexFile, shellConfig.getSlashShellPackageName());
-            }
-
-            File originalDexZipFile = new File(getOutAssetsDir(packageMainProcessPath).getAbsolutePath() + File.separator + Const.KEY_DEXES_STORE_NAME);
-            byte[] zipData = com.android.dex.util.FileUtils.readFile(originalDexZipFile);// Read the zip file as binary data
-            byte[] unShellDexArray =  com.android.dex.util.FileUtils.readFile(!needRename ? shellDexFile : renameDexFile); // Read the dex file as binary data
-            int zipDataLen = zipData.length;
-            int unShellDexLen = unShellDexArray.length;
-            LogUtils.info("Dexes zip file size: %s", zipDataLen);
-            LogUtils.info("Proxy dex file size: %s", unShellDexLen);
-            int totalLen = zipDataLen + unShellDexLen + 4;// An additional 4 bytes are added to store the length
-            byte[] newDexBytes = new byte[totalLen]; // Allocate the new length
-
-            // Add the shell code
-            System.arraycopy(unShellDexArray, 0, newDexBytes, 0, unShellDexLen);// First, copy the dex content
-            // Add the unencrypted zip data
-            System.arraycopy(zipData, 0, newDexBytes, unShellDexLen, zipDataLen); // Then copy the APK content after the dex content
-            // Add the length of the shell data
-            System.arraycopy(FileUtils.intToByte(zipDataLen), 0, newDexBytes, totalLen - 4, 4);// The last 4 bytes are for the length
-
-            // Modify the DEX file size header
-            FileUtils.fixFileSizeHeader(newDexBytes);
-            // Modify the DEX SHA1 header
-            FileUtils.fixSHA1Header(newDexBytes);
-            // Modify the DEX CheckSum header
-            FileUtils.fixCheckSumHeader(newDexBytes);
-
-            String targetDexFile = getDexDir(packageMainProcessPath) + File.separator + "classes.dex";
-
-
-            File file = new File(targetDexFile);
-            if (!file.exists()) {
-                file.createNewFile();
-            }
-
-            // Output the new dex file
-            FileOutputStream localFileOutputStream = new FileOutputStream(targetDexFile);
-            localFileOutputStream.write(newDexBytes);
-            localFileOutputStream.flush();
-            localFileOutputStream.close();
-            LogUtils.info("New Dex file generated: " + targetDexFile);
-            // Delete the dex zip package
-            FileUtils.deleteRecurse(originalDexZipFile);
-            FileUtils.deleteRecurse(renameDexFile);
-        }catch (Exception e){
-            e.printStackTrace();
+        byte[] unShellDexArray;
+        if (needRename) {
+            DexUtils.renamePackageName(shellDexFile, renameDexFile, targetSlashPackage);
+            unShellDexArray = com.android.dex.util.FileUtils.readFile(renameDexFile);
+        } else {
+            unShellDexArray = com.android.dex.util.FileUtils.readFile(shellDexFile);
         }
 
+        File originalDexZipFile = new File(getOutAssetsDir(packageMainProcessPath).getAbsolutePath() + File.separator + Const.KEY_DEXES_STORE_NAME);
+        byte[] zipData = com.android.dex.util.FileUtils.readFile(originalDexZipFile);
+        int zipDataLen = zipData.length;
+        int unShellDexLen = unShellDexArray.length;
+        LogUtils.info("Dexes zip file size: %s", zipDataLen);
+        LogUtils.info("Proxy dex file size: %s", unShellDexLen);
+        int totalLen = zipDataLen + unShellDexLen + 4;
+        byte[] newDexBytes = new byte[totalLen];
+
+        System.arraycopy(unShellDexArray, 0, newDexBytes, 0, unShellDexLen);
+        System.arraycopy(zipData, 0, newDexBytes, unShellDexLen, zipDataLen);
+        System.arraycopy(FileUtils.intToByte(zipDataLen), 0, newDexBytes, totalLen - 4, 4);
+
+        FileUtils.fixFileSizeHeader(newDexBytes);
+        FileUtils.fixSHA1Header(newDexBytes);
+        FileUtils.fixCheckSumHeader(newDexBytes);
+
+        String targetDexFile = getDexDir(packageMainProcessPath) + File.separator + "classes.dex";
+        File file = new File(targetDexFile);
+        if (!file.exists()) file.createNewFile();
+
+        FileOutputStream localFileOutputStream = new FileOutputStream(targetDexFile);
+        localFileOutputStream.write(newDexBytes);
+        localFileOutputStream.flush();
+        localFileOutputStream.close();
+        LogUtils.info("New Dex file generated: " + targetDexFile);
+
+        FileUtils.deleteRecurse(originalDexZipFile);
+        if (needRename) FileUtils.deleteRecurse(renameDexFile);
+    } catch (Exception e) {
+        e.printStackTrace();
     }
+}
 
     private String getUnsignPackageName(String packageFileName){
         return FileUtils.getNewFileName(packageFileName,"unsign");
@@ -386,11 +376,11 @@ public abstract class AndroidPackage {
     }
 
     public String getProxyApplicationName() {
-        return String.format(Locale.US, "%s.%s", ShellConfig.getInstance().getShellPackageName(), "StubApp");
+    return "com.stub.StubApp";
     }
 
-    public String getProxyComponentFactory() {
-        return String.format(Locale.US, "%s.%s", ShellConfig.getInstance().getShellPackageName(), "qihooutil");
+   public String getProxyComponentFactory() {
+    return "com.qihoo.util.qihooutil";
     }
 
     protected String getProxyDexPath() {
