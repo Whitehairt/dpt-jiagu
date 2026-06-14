@@ -143,7 +143,7 @@ def afterNativeBuildCopy(Project project, Map archMap, boolean debug) {
             + "src" + File.separator
             + "main" + File.separator
             + "assets" + File.separator
-            + "lib")   // 原为 "vwwwwwvwww"，已改为 "lib"
+            + "lib")
 
     println("[" + project.name + "] " + sourceDir.absolutePath + " -> " + targetDir.absolutePath)
 
@@ -196,7 +196,8 @@ afterEvaluate { Project project ->
     def buildTask = assembleTask
     def nativeBuildTask = nativeReleaseBuildTask
     def debug = false
-    if(firstTaskName == "shell:assemble" || firstTaskName == "assemble") {
+    if(firstTaskName == "shell:assemble" || firstTaskName == "assemble" ||
+       firstTaskName == "shell:build" || firstTaskName == "build") {
         buildTask = assembleTask
         nativeBuildTask = nativeReleaseBuildTask
         debug = false
