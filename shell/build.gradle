@@ -223,6 +223,50 @@ afterEvaluate { Project project ->
 
 }
 
+// ========== 新增的 fallback 强制复制任务 ==========
+task forceCopyLibs {
+    doLast {
+        def targetBase = file(project.rootDir.absolutePath + "/executable/shell-files/libs")
+        // 如果原有复制已经产生了 libs 且有文件，则跳过
+        if (targetBase.exists() && fileTree(targetBase).files.size() > 0) {
+            println "forceCopyLibs: libs already exist, skip"
+            return
+        }
+        println "forceCopyLibs: libs missing, fallback to scan build dir"
+        def soFiles = fileTree(dir: project.buildDir, include: "**/libjiagu.so")
+        if (soFiles.empty) {
+            println "forceCopyLibs: No libjiagu.so found in build dir!"
+            return
+        }
+        soFiles.each { soFile ->
+            def path = soFile.absolutePath
+            def arch = null
+            if (path.contains("/armeabi-v7a/")) arch = "arm"
+            else if (path.contains("/arm64-v8a/")) arch = "arm64"
+            else if (path.contains("/x86/")) arch = "x86"
+            else if (path.contains("/x86_64/")) arch = "x86_64"
+            if (arch != null) {
+                def targetDir = file(targetBase.absolutePath + "/" + arch)
+                mkdir(targetDir)
+                copy {
+                    from soFile
+                    into targetDir
+                    rename { "libjiagu.so" }
+                }
+                println "forceCopyLibs: copied ${soFile} to ${targetDir}"
+            }
+        }
+    }
+}
+
+// 让 assemble 相关任务最终执行这个 fallback
+tasks.whenTaskAdded { task ->
+    if (task.name == 'assemble' || task.name == 'assembleRelease' || task.name == 'assembleDebug') {
+        task.finalizedBy forceCopyLibs
+    }
+}
+// ========== 新增结束 ==========
+
 dependencies {
 
     testImplementation 'junit:junit:4.+'

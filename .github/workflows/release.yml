@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -31,10 +32,26 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Building project
-      run: ./gradlew assemble
+      run: ./gradlew assemble   # 或 build，按你现在的
     - name: Get latest tag name
       id: get_latest_tag_name
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+    - name: Force copy libs to executable/shell-files/libs
+      run: |
+        find . -name "libjiagu.so" -type f | while read so; do
+          arch_dir=$(dirname "$so" | xargs basename)
+          case "$arch_dir" in
+            armeabi-v7a) target_arch="arm" ;;
+            arm64-v8a)   target_arch="arm64" ;;
+            x86)         target_arch="x86" ;;
+            x86_64)      target_arch="x86_64" ;;
+            *) continue ;;
+          esac
+          mkdir -p "executable/shell-files/libs/$target_arch"
+          cp "$so" "executable/shell-files/libs/$target_arch/libjiagu.so"
+          echo "Copied $so to executable/shell-files/libs/$target_arch/"
+        done
+        mkdir -p executable/shell-files/libs
     - name: Compress files
       run:  zip -r -q dpt-shell-${{ steps.get_latest_tag_name.outputs.VERSION }}.zip executable/
     - uses: "marvinpinto/action-automatic-releases@latest"
