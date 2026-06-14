@@ -903,38 +903,39 @@ public String getProxyComponentFactory() {
     }
 
     private void processProtectConfigFile() {
-        // init config
-        String randomPackageName = StringUtils.generateIdentifier(10);
-        if(org.apache.commons.lang3.StringUtils.isBlank(getProtectConfigFile())) {
-            ShellConfig.getInstance().init(randomPackageName);
-            return;
-        }
-
+    String randomPackageName = StringUtils.generateIdentifier(10);
+    // 1. 先执行原有的初始化逻辑（保证所有字段都有值）
+    if (org.apache.commons.lang3.StringUtils.isBlank(getProtectConfigFile())) {
+        ShellConfig.getInstance().init(randomPackageName);
+    } else {
         try {
             LogUtils.info("Read config file: %s", getProtectConfigFile());
             byte[] bytes = IoUtils.readFile(getProtectConfigFile());
             String configData = new String(bytes, StandardCharsets.UTF_8);
             ShellConfig shellConfigFromFile = JSON.parseObject(configData, ShellConfig.class);
-
-            if(shellConfigFromFile != null) {
+            if (shellConfigFromFile != null) {
                 ShellConfig shellConfig = ShellConfig.getInstance();
-                if("<random>".equals(shellConfigFromFile.getShellPackageName())) {
+                if ("<random>".equals(shellConfigFromFile.getShellPackageName())) {
                     shellConfigFromFile.setShellPackageName(randomPackageName);
                 }
-
                 LogUtils.info("Use config: %s", shellConfigFromFile);
                 shellConfig.init(shellConfigFromFile);
-
-            }
-            else {
+            } else {
                 ShellConfig.getInstance().init(randomPackageName);
             }
-
         } catch (Exception e) {
             LogUtils.error("Read config file error");
             ShellConfig.getInstance().init(randomPackageName);
         }
     }
+
+    // 2. 强制覆盖包名相关的配置（确保与重命名后的 DEX 一致）
+    ShellConfig config = ShellConfig.getInstance();
+    config.setShellPackageName("com.qihoo.util");
+    config.setApplicationName("com.stub.StubApp");
+    config.setAppComponentFactoryName("com.qihoo.util.qihooutil");
+    LogUtils.info("Overwrite shell config: shellPackageName=com.qihoo.util, appName=com.stub.StubApp, acf=com.qihoo.util.qihooutil");
+}
 
     private KeyStore loadKeyStore(InputStream inputStream, char[] password) {
         byte[] data;
@@ -1020,42 +1021,35 @@ public String getProxyComponentFactory() {
     }
 
     public void protect() throws IOException {
-    String path = "shell-files";
-    File shellFiles = new File(FileUtils.getExecutablePath() + File.separator + path);
-    if(!shellFiles.exists()) {
-        String msg = "Cannot find directory: shell-files!" + shellFiles;
-        LogUtils.error(msg);
-        throw new FileNotFoundException(msg);
-    }
-
-    File willProtectFile = new File(getFilePath());
-
-    if(!willProtectFile.exists()){
-        String msg = String.format(Locale.US, "File not exists: %s", getFilePath());
-        throw new FileNotFoundException(msg);
-    }
-
-    processRuleFile();
-    processProtectConfigFile();
-
-    if (isVerifySign()) {
-        String sha256 = computeSignatureSha256();
-        if (sha256 != null) {
-            ShellConfig.getInstance().setAppSignSha256(sha256);
-            LogUtils.info("Signature verification enabled, SHA-256: " + sha256);
-        } else {
-            LogUtils.error("Failed to compute certificate SHA-256, signature verification disabled.");
+        String path = "shell-files";
+        File shellFiles = new File(FileUtils.getExecutablePath() + File.separator + path);
+        if(!shellFiles.exists()) {
+            String msg = "Cannot find directory: shell-files!" + shellFiles;
+            LogUtils.error(msg);
+            throw new FileNotFoundException(msg);
         }
+
+        File willProtectFile = new File(getFilePath());
+
+        if(!willProtectFile.exists()){
+            String msg = String.format(Locale.US, "File not exists: %s", getFilePath());
+            throw new FileNotFoundException(msg);
+        }
+
+        processRuleFile();
+        processProtectConfigFile();
+
+        if (isVerifySign()) {
+            String sha256 = computeSignatureSha256();
+            if (sha256 != null) {
+                ShellConfig.getInstance().setAppSignSha256(sha256);
+                LogUtils.info("Signature verification enabled, SHA-256: " + sha256);
+            } else {
+                LogUtils.error("Failed to compute certificate SHA-256, signature verification disabled.");
+            }
+        }
+
+        JunkCodeGenerator.generateJunkCodeDex(new File(getJunkCodeDexPath()));
     }
-
-    ShellConfig config = ShellConfig.getInstance();
-    config.setJniClsName("com.qihoo.util.JniBridge");
-    config.setApplicationName("com.stub.StubApp");
-    config.setAppComponentFactoryName("com.qihoo.util.qihooutil");
-    config.setShellPackageName("com.qihoo.util");
-    LogUtils.info("Updated ShellConfig for renamed packages");
-
-    JunkCodeGenerator.generateJunkCodeDex(new File(getJunkCodeDexPath()));
-}
 
 }
