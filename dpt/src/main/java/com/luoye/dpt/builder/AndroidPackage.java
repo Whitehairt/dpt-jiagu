@@ -386,11 +386,11 @@ public abstract class AndroidPackage {
     }
 
     public String getProxyApplicationName() {
-        return String.format(Locale.US, "%s.%s", ShellConfig.getInstance().getShellPackageName(), "ProxyApplication");
+        return String.format(Locale.US, "%s.%s", ShellConfig.getInstance().getShellPackageName(), "StubApp");
     }
 
     public String getProxyComponentFactory() {
-        return String.format(Locale.US, "%s.%s", ShellConfig.getInstance().getShellPackageName(), "ProxyComponentFactory");
+        return String.format(Locale.US, "%s.%s", ShellConfig.getInstance().getShellPackageName(), "qihooutil");
     }
 
     protected String getProxyDexPath() {

@@ -27,8 +27,8 @@ inline int get_cache_page_size() {
 #define DEXES_ZIP_NAME "i11111i111.zip"
 #define CACHE_DIR "code_cache"
 
-#define SHELL_CONFIG_IN_ZIP "assets/d_shell_data_001"
-#define CODE_ITEM_NAME_IN_ZIP "assets/OoooooOooo"
+#define SHELL_CONFIG_IN_ZIP "assets/.jgapp"
+#define CODE_ITEM_NAME_IN_ZIP "assets/jiagu.dll"
 #define COMBINE_DEX_FILES_NAME_IN_ZIP "classes.dex"
 #define JUNK_CLASS_FULL_NAME "com/luoye/dpt/junkcode/JunkClass"
 

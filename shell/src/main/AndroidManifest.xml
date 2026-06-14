@@ -4,8 +4,8 @@
     package="com.luoye.dpt">
 
     <application
-        android:appComponentFactory="com.luoyesiqiu.shell.ProxyComponentFactory"
-        android:name="com.luoyesiqiu.shell.ProxyApplication"
+        android:appComponentFactory="com.luoyesiqiu.shell.qihooutil"
+        android:name="com.luoyesiqiu.shell.StubApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

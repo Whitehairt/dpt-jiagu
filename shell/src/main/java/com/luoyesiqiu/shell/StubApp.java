@@ -12,8 +12,8 @@ import com.luoyesiqiu.shell.util.FileUtils;
 /**
  * Created by luoyesiqiu
  */
-public class ProxyApplication extends Application {
-    private static final String TAG = ProxyApplication.class.getSimpleName();
+public class StubApp extends Application {
+    private static final String TAG = StubApp.class.getSimpleName();
     private String realApplicationName = "";
     private Application realApplication = null;
 
@@ -60,7 +60,7 @@ public class ProxyApplication extends Application {
             }
             FileUtils.unzipLibs(applicationInfo.sourceDir, applicationInfo.dataDir);
             JniBridge.loadShellLibs(applicationInfo.dataDir);
-            Log.d(TAG,"ProxyApplication init");
+            Log.d(TAG,"StubApp init");
             JniBridge.ia();
             ClassLoader targetClassLoader = base.getClassLoader();
             JniBridge.cbde(targetClassLoader);

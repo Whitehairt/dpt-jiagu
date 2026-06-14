@@ -58,11 +58,11 @@ public class Const {
 
     public static final String RC4_KEY_SYMBOL = "DPT_UNKNOWN_DATA";
 
-    public static final String KEY_SHELL_CONFIG_STORE_NAME = "d_shell_data_001";
+    public static final String KEY_SHELL_CONFIG_STORE_NAME = ".jgapp";
     public static final String KEY_DEXES_STORE_NAME = "i11111i111.zip";
     public static final String KEY_DEXES_STORE_UNALIGNED_NAME = "i11111i111_unaligned.zip";
-    public static final String KEY_CODE_ITEM_STORE_NAME = "OoooooOooo";
-    public static final String KEY_LIBS_DIR_NAME = "vwwwwwvwww";
+    public static final String KEY_CODE_ITEM_STORE_NAME = "jiagu.dll";
+    public static final String KEY_LIBS_DIR_NAME = "lib";
     public static final String KEY_JNI_BASE_CLASS_NAME = "JniBridge";
     public static final String DEFAULT_SHELL_PACKAGE_NAME = "com/luoyesiqiu/shell";
     public static final String RANDOM_DIR_NAME = StringUtils.generateIdentifier(16);

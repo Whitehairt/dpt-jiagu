@@ -19,8 +19,8 @@ import com.luoyesiqiu.shell.util.FileUtils;
 
 import java.lang.reflect.Method;
  @TargetApi(28)
-public class ProxyComponentFactory extends AppComponentFactory {
-    private static final String TAG = "dpt " + ProxyComponentFactory.class.getSimpleName();
+public class qihooutil extends AppComponentFactory {
+    private static final String TAG = "dpt " + qihooutil.class.getSimpleName();
     private static AppComponentFactory sAppComponentFactory;
 
     private String getTargetClassName(){
