@@ -19,10 +19,10 @@ public class StubApp extends Application {
 
     private void replaceApplication() {
         if (Global.sNeedCalledApplication && !TextUtils.isEmpty(realApplicationName)) {
-            realApplication = (Application) JniBridge.ra(realApplicationName);
+            realApplication = (Application) DtcLoader.ra(realApplicationName);
             Log.d(TAG, "applicationExchange: " + realApplicationName + ", realApplication: " + realApplication.getClass().getName());
 
-            JniBridge.craoc(realApplicationName);
+            DtcLoader.craoc(realApplicationName);
             Global.sNeedCalledApplication = false;
         }
     }
@@ -59,15 +59,15 @@ public class StubApp extends Application {
                 throw new NullPointerException("application info is null");
             }
             FileUtils.unzipLibs(applicationInfo.sourceDir, applicationInfo.dataDir);
-            JniBridge.loadShellLibs(applicationInfo.dataDir);
+            DtcLoader.loadShellLibs(applicationInfo.dataDir);
             Log.d(TAG,"StubApp init");
-            JniBridge.ia();
+            DtcLoader.ia();
             ClassLoader targetClassLoader = base.getClassLoader();
-            JniBridge.cbde(targetClassLoader);
+            DtcLoader.cbde(targetClassLoader);
             Global.sIsReplacedClassLoader = true;
         }
 
-        realApplicationName = JniBridge.rapn();
+        realApplicationName = DtcLoader.rapn();
     }
 
 }

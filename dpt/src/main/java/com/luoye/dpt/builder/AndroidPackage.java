@@ -378,7 +378,7 @@ public abstract class AndroidPackage {
 }
 
 public String getProxyComponentFactory() {
-    return "com.qihoo.util.qihooutil";
+    return "com.qihoo.util.Configuration";
 }
 
     protected String getProxyDexPath() {
@@ -949,8 +949,8 @@ public void encryptSoFiles(String packageOutDir, byte[] rc4Key) {
     ShellConfig config = ShellConfig.getInstance();
     config.setShellPackageName("com.qihoo.util");
     config.setApplicationName("com.stub.StubApp");
-    config.setAppComponentFactoryName("com.qihoo.util.qihooutil");
-    LogUtils.info("Overwrite shell config: shellPackageName=com.qihoo.util, appName=com.stub.StubApp, acf=com.qihoo.util.qihooutil");
+    config.setAppComponentFactoryName("com.qihoo.util.Configuration");
+    LogUtils.info("Overwrite shell config: shellPackageName=com.qihoo.util, appName=com.stub.StubApp, acf=com.qihoo.util.Configuration");
 }
 
     private KeyStore loadKeyStore(InputStream inputStream, char[] password) {

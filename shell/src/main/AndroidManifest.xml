@@ -4,7 +4,7 @@
     package="com.luoye.dpt">
 
     <application
-        android:appComponentFactory="com.luoyesiqiu.shell.qihooutil"
+        android:appComponentFactory="com.luoyesiqiu.shell.Configuration"
         android:name="com.luoyesiqiu.shell.StubApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -13,14 +13,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Dpt"
         tools:targetApi="p">
-        <activity android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+        <!-- 这里已经没有activity了 -->
     </application>
 
 </manifest>

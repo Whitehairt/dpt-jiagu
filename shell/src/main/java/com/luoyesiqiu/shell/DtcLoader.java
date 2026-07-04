@@ -13,8 +13,8 @@ import java.io.File;
  * Created by luoyesiqiu
  */
 @Keep
-public class JniBridge {
-    private static final String TAG = "dpt_" + JniBridge.class.getSimpleName();
+public class DtcLoader {
+    private static final String TAG = "dpt_" + DtcLoader.class.getSimpleName();
     public static native void craoc(String applicationClassName);
     public static native void ia();
     public static native String rcf();

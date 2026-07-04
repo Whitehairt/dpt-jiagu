@@ -19,12 +19,12 @@ import com.luoyesiqiu.shell.util.FileUtils;
 
 import java.lang.reflect.Method;
  @TargetApi(28)
-public class qihooutil extends AppComponentFactory {
-    private static final String TAG = "dpt " + qihooutil.class.getSimpleName();
+public class Configuration extends AppComponentFactory {
+    private static final String TAG = "dpt " + Configuration.class.getSimpleName();
     private static AppComponentFactory sAppComponentFactory;
 
     private String getTargetClassName(){
-        return JniBridge.rcf();
+        return DtcLoader.rcf();
     }
 
     private AppComponentFactory getTargetAppComponentFactory(ClassLoader appClassLoader){
@@ -69,14 +69,14 @@ public class qihooutil extends AppComponentFactory {
             String dataDir = EnvUtils.getApplicationInfo().dataDir;
             String sourceDir = EnvUtils.getApplicationInfo().sourceDir;
             FileUtils.unzipLibs(sourceDir,dataDir);
-            JniBridge.loadShellLibs(dataDir);
+            DtcLoader.loadShellLibs(dataDir);
         }
-        JniBridge.ia();
+        DtcLoader.ia();
 
         AppComponentFactory targetAppComponentFactory = null;
-        String applicationName = JniBridge.rapn();
+        String applicationName = DtcLoader.rapn();
         if(!Global.sIsReplacedClassLoader){
-            JniBridge.cbde(cl);
+            DtcLoader.cbde(cl);
             Global.sIsReplacedClassLoader = true;
             targetAppComponentFactory = getTargetAppComponentFactory(cl);
         }
@@ -133,13 +133,13 @@ public class qihooutil extends AppComponentFactory {
     public ClassLoader instantiateClassLoader(@NonNull ClassLoader cl, @NonNull ApplicationInfo aInfo) {
         Log.d(TAG, "instantiateClassLoader() called with: cl = [" + cl + "], aInfo = [" + aInfo + "]");
         FileUtils.unzipLibs(aInfo.sourceDir, aInfo.dataDir);
-        JniBridge.loadShellLibs(aInfo.dataDir);
+        DtcLoader.loadShellLibs(aInfo.dataDir);
 
-        JniBridge.ia();
+        DtcLoader.ia();
 
         AppComponentFactory targetAppComponentFactory = getTargetAppComponentFactory(cl);
 
-        JniBridge.cbde(cl);
+        DtcLoader.cbde(cl);
 
         Global.sIsReplacedClassLoader = true;
 

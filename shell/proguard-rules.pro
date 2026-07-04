@@ -28,6 +28,6 @@
     public static int v(...);
 }
 -repackageclasses com.luoyesiqiu.shell
--keep class com.luoyesiqiu.shell.JniBridge {
+-keep class com.luoyesiqiu.shell.DtcLoader {
     native <methods>;
 }
