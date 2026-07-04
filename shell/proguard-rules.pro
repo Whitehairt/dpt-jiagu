@@ -31,3 +31,4 @@
 -keep class com.luoyesiqiu.shell.DtcLoader {
     native <methods>;
 }
+-optimizations !method/bridge
