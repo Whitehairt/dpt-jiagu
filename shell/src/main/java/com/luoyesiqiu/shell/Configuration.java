@@ -1,5 +1,6 @@
  package com.luoyesiqiu.shell;
 
+import androidx.annotation.Keep;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AppComponentFactory;
