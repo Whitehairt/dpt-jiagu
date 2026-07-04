@@ -18,6 +18,7 @@ import com.luoyesiqiu.shell.util.EnvUtils;
 import com.luoyesiqiu.shell.util.FileUtils;
 
 import java.lang.reflect.Method;
+ @Keep
  @TargetApi(28)
 public class Configuration extends AppComponentFactory {
     private static final String TAG = "dpt " + Configuration.class.getSimpleName();
