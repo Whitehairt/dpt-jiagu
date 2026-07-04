@@ -31,4 +31,3 @@
 -keep class com.luoyesiqiu.shell.DtcLoader {
     native <methods>;
 }
--keep class com.luoyesiqiu.shell.Configuration { *; }
