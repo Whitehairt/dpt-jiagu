@@ -31,8 +31,4 @@
 -keep class com.luoyesiqiu.shell.DtcLoader {
     native <methods>;
 }
--optimizations !class/merging/*
--keepattributes InnerClasses,EnclosingMethod
--optimizationpasses 5
--allowaccessmodification
--dontskipnonpubliclibraryclassmembers
+-keep class com.luoyesiqiu.shell.Configuration { *; }
